@@ -1,6 +1,7 @@
 //
 // Created by jinyuanfeng.
 //
+#define OPENBLAS
 #define USE_SSE
 #include "pig_solver.hpp"
 
@@ -65,5 +66,41 @@ int main(){
 //            //a.grad;
 //            //a.parent_op;
 //            //a.bp();
+    //training flow
+    //initialize training dataloader
+    PS::NImageData<float> train_loader("train.txt",8,{32,32,3});
+    vector<PS::NMatrix<float>> data_label;
+    PS::NTensor<float>* input;
+    PS::NTensor<float>* lables;
+    int epoch_num = 1;
+    Model<float> model;
+    CrossEntropyLoss<float> loss;
+    PS::NOptimizer<float> optimizer(model.model_params,-0.00001);
+    optimizer.show_model_params_info();
+
+    for(int e=0;e<epoch_num;e++){
+        vector<vector<int>> batch_id = train_loader.get_batch_id_generator();
+        for(int i=0; i<150;i++){
+            int j = i%10;
+            cout<<"----------------> Processing :"<<i<<endl;
+            data_label = train_loader.get_batch_data(batch_id[j]);
+//                     cout<<"labels";
+//                     data_label[1].show();
+            input = new PS::NTensor<float>(data_label[0]);
+            lables = new PS::NTensor<float>(data_label[1]);
+            auto out  = model.forward(input);
+//                     cout<<"pred";
+//                     out->show();
+            auto lv  =  loss.forward(out,lables);
+            cout<<"loss: ";
+            lv->show();
+            lv->bp();
+            optimizer.step();
+            optimizer.set_zero_grad();
+            cout<<PS::global_mem_size<<endl;
+            PS::clean_tensor<PS::NTensor<float>>();
+            cout<<PS::global_mem_size<<endl;
+        }
+    }
     return 0;
 }
